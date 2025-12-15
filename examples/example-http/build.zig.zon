@@ -1,0 +1,15 @@
+.{
+    .name = .example_http,
+    .version = "0.1.0",
+    .dependencies = .{
+        .@"http-server" = .{
+            .path = "../../modules/http-server",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "main.zig",
+    },
+    .fingerprint = 0xa8ccc420608fa9ab,
+}

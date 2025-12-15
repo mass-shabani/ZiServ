@@ -31,12 +31,14 @@ pub const Logger = struct {
 
     pub fn log(self: Logger, level: LogLevel, comptime fmt: []const u8, args: anytype) !void {
         if (@intFromEnum(level) >= @intFromEnum(self.level)) {
+            const stderr = std.io.getStdErr().writer();
+
             const timestamp = std.time.timestamp();
             const level_str = level.toString();
 
-            std.debug.print("[{d}] [{s}] ", .{ timestamp, level_str });
-            std.debug.print(fmt, args);
-            std.debug.print("\n", .{});
+            try stderr.print("[{d}] [{s}] ", .{ timestamp, level_str });
+            try stderr.print(fmt, args);
+            try stderr.writeAll("\n");
         }
     }
 

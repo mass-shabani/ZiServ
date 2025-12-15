@@ -1,7 +1,6 @@
 .{
-    .name = "example-service",
+    .name = .@"example-service",
     .version = "0.1.0",
-    .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .core = .{
             .path = "../../modules/core",

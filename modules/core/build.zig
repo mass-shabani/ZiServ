@@ -1,5 +1,3 @@
-// modules/core/build.zig
-
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
@@ -7,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // ساخت ماژول core
-    _ = b.addModule("core", .{
+    const core_module = b.addModule("core", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
@@ -15,9 +13,7 @@ pub fn build(b: *std.Build) void {
 
     // تست‌های ماژول
     const tests = b.addTest(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = core_module,
     });
 
     const run_tests = b.addRunArtifact(tests);

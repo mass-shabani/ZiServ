@@ -1,7 +1,5 @@
-// modules/core/build.zig.zon
-
 .{
-    .name = "ziserv-core",
+    .name = .ziserv_core,
     .version = "0.1.0",
     .minimum_zig_version = "0.15.2",
     .dependencies = .{},
@@ -10,4 +8,5 @@
         "build.zig.zon",
         "src",
     },
+    .fingerprint = 0x5ddbe879f333c968,
 }

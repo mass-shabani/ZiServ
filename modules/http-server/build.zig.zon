@@ -1,7 +1,7 @@
 // modules/http-server/build.zig.zon
 
 .{
-    .name = "ziserv-http-server",
+    .name = .ziserv_http_server,
     .version = "0.1.0",
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
@@ -14,4 +14,5 @@
         "build.zig.zon",
         "src",
     },
+    .fingerprint = 0x5cd51ccb5ee3f965,
 }
