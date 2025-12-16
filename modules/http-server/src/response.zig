@@ -22,13 +22,16 @@ pub const Response = struct {
     }
 
     pub fn send(self: *Response, stream: std.net.Stream) !void {
-        const writer = stream.writer();
+        var buf: [1024]u8 = undefined;
+        var writer = stream.writer(&buf);
+        const w = &writer.interface;
 
-        try writer.print("HTTP/1.1 {d} OK\r\n", .{self.status_code});
-        try writer.writeAll("Content-Type: text/plain\r\n");
-        try writer.print("Content-Length: {d}\r\n", .{self.body.len});
-        try writer.writeAll("\r\n");
-        try writer.writeAll(self.body);
+        try w.print("HTTP/1.1 {d} OK\r\n", .{self.status_code});
+        try w.writeAll("Content-Type: text/plain\r\n");
+        try w.print("Content-Length: {d}\r\n", .{self.body.len});
+        try w.writeAll("\r\n");
+        try w.writeAll(self.body);
+        try w.flush();
     }
 };
 

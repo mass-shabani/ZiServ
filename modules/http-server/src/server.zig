@@ -58,13 +58,27 @@ pub const HttpServer = struct {
     }
 
     fn handleConnection(self: *HttpServer, connection: std.net.Server.Connection) !void {
+        const logger = core.logger.Logger.init(self.allocator, .info);
+        try logger.info("New connection accepted", .{});
+
         var buffer: [4096]u8 = undefined;
-        const bytes_read = try connection.stream.read(&buffer);
+        const bytes_read = connection.stream.read(&buffer) catch |err| {
+            try logger.err("Failed to read from connection: {}", .{err});
+            return;
+        };
+        try logger.info("Read {d} bytes from connection", .{bytes_read});
 
-        if (bytes_read == 0) return;
+        if (bytes_read == 0) {
+            try logger.info("Connection closed by client", .{});
+            return;
+        }
 
-        const req = try Request.parse(self.allocator, buffer[0..bytes_read]);
+        const req = Request.parse(self.allocator, buffer[0..bytes_read]) catch |err| {
+            try logger.err("Failed to parse request: {}", .{err});
+            return;
+        };
         defer req.deinit();
+        try logger.info("Parsed request: {s} {s}", .{ req.method, req.path });
 
         var resp = Response.init(self.allocator);
         defer resp.deinit();
@@ -72,7 +86,11 @@ pub const HttpServer = struct {
         resp.status_code = 200;
         resp.body = "Hello from ZiServ HTTP Server!";
 
-        try resp.send(connection.stream);
+        resp.send(connection.stream) catch |err| {
+            try logger.err("Failed to send response: {}", .{err});
+            return;
+        };
+        try logger.info("Response sent", .{});
     }
 };
 

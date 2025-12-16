@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const http_server = b.dependency("http_server", .{ .target = target, .optimize = optimize });
+    const http_server = b.dependency("http-server", .{ .target = target, .optimize = optimize });
 
     const exe = b.addExecutable(.{
         .name = "example-http",
