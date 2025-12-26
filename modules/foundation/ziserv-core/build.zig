@@ -1,3 +1,7 @@
+// ============================================================
+// فایل: modules/foundation/ziserv-core/build.zig
+// ============================================================
+
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
@@ -5,7 +9,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // ساخت ماژول core
-    const core_module = b.addModule("core", .{
+    _ = b.addModule("ziserv-core", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
@@ -13,7 +17,11 @@ pub fn build(b: *std.Build) void {
 
     // تست‌های ماژول
     const tests = b.addTest(.{
-        .root_module = core_module,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/root.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const run_tests = b.addRunArtifact(tests);
