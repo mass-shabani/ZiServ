@@ -8,35 +8,35 @@ const std = @import("std");
 /// مدیریت زمان
 pub const Time = struct {
     /// زمان فعلی (nanoseconds)
-    pub fn now() i64 {
+    pub fn now() i128 {
         return std.time.nanoTimestamp();
     }
 
     /// زمان فعلی (milliseconds)
-    pub fn nowMillis() i64 {
+    pub fn nowMillis() i128 {
         return @divTrunc(now(), 1_000_000);
     }
 
     /// زمان فعلی (seconds)
-    pub fn nowSeconds() i64 {
+    pub fn nowSeconds() i128 {
         return @divTrunc(now(), 1_000_000_000);
     }
 
     /// تبدیل nanoseconds به milliseconds
-    pub fn nsToMs(ns: i64) i64 {
+    pub fn nsToMs(ns: i128) i128 {
         return @divTrunc(ns, 1_000_000);
     }
 
     /// تبدیل milliseconds به nanoseconds
-    pub fn msToNs(ms: i64) i64 {
+    pub fn msToNs(ms: i128) i128 {
         return ms * 1_000_000;
     }
 };
 
 /// Stopwatch برای اندازه‌گیری زمان
 pub const Stopwatch = struct {
-    start_time: i64,
-    elapsed: i64,
+    start_time: i128,
+    elapsed: i128,
     running: bool,
 
     pub fn init() Stopwatch {
@@ -65,21 +65,21 @@ pub const Stopwatch = struct {
         self.running = false;
     }
 
-    pub fn elapsedNs(self: *const Stopwatch) i64 {
+    pub fn elapsedNs(self: *const Stopwatch) i128 {
         if (self.running) {
             return self.elapsed + (Time.now() - self.start_time);
         }
         return self.elapsed;
     }
 
-    pub fn elapsedMs(self: *const Stopwatch) i64 {
+    pub fn elapsedMs(self: *const Stopwatch) i128 {
         return Time.nsToMs(self.elapsedNs());
     }
 };
 
 test "time utilities" {
     const t1 = Time.now();
-    std.time.sleep(1 * std.time.ns_per_ms);
+    std.Thread.sleep(1 * std.time.ns_per_ms);
     const t2 = Time.now();
 
     try std.testing.expect(t2 > t1);
@@ -88,7 +88,7 @@ test "time utilities" {
 test "stopwatch" {
     var sw = Stopwatch.init();
     sw.start();
-    std.time.sleep(10 * std.time.ns_per_ms);
+    std.Thread.sleep(10 * std.time.ns_per_ms);
     sw.stop();
 
     const elapsed = sw.elapsedMs();
