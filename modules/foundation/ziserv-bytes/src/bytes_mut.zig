@@ -1,42 +1,48 @@
 // ============================================================
 // فایل: modules/foundation/ziserv-bytes/src/bytes_mut.zig
-// Mutable bytes - قابل تغییر
+// Mutable bytes - قابل تغییر - سازگار با Zig 0.15+ (Unmanaged ArrayList)
 // ============================================================
 
 const std = @import("std");
 const core = @import("ziserv-core");
 const Bytes = @import("bytes.zig").Bytes;
 
-/// BytesMut - bytes قابل تغییر
 pub const BytesMut = struct {
     buffer: std.ArrayList(u8),
+    allocator: std.mem.Allocator, // <--- نکته مهم: ذخیره آلیکیتور در سطح ماژول
 
     const Self = @This();
 
-    /// ساخت با capacity
+    /// ساخت با capacity پیش‌فرض
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
-            .buffer = std.ArrayList(u8).init(allocator),
+            .allocator = allocator,
+            .buffer = std.ArrayList(u8){}, // ساختار خالی (Unmanaged)
         };
     }
 
-    /// ساخت با capacity اولیه
+    /// ساخت با capacity اولیه مشخص
     pub fn initCapacity(allocator: std.mem.Allocator, cpcty: usize) !Self {
-        var buf = std.ArrayList(u8).init(allocator);
-        try buf.ensureTotalCapacity(cpcty);
-        return .{ .buffer = buf };
+        var list = std.ArrayList(u8){};
+        // متد ensureTotalCapacity در نسخه Unmanaged آلیکیتور می‌گیرد
+        try list.ensureTotalCapacity(allocator, cpcty);
+        return .{
+            .allocator = allocator,
+            .buffer = list,
+        };
     }
 
-    /// ساخت از داده
+    /// ساخت از داده موجود
     pub fn from(data: []const u8, allocator: std.mem.Allocator) !Self {
         var self = Self.init(allocator);
         try self.write(data);
         return self;
     }
 
-    /// آزاد کردن
+    /// آزادسازی
     pub fn deinit(self: *Self) void {
-        self.buffer.deinit();
+        // deinit نیز آلیکیتور می‌گیرد
+        self.buffer.deinit(self.allocator);
     }
 
     /// طول فعلی
@@ -54,39 +60,39 @@ pub const BytesMut = struct {
         return self.buffer.items.len == 0;
     }
 
-    /// نوشتن
+    /// نوشتن داده
     pub fn write(self: *Self, data: []const u8) !void {
-        try self.buffer.appendSlice(data);
+        try self.buffer.appendSlice(self.allocator, data);
     }
 
     /// نوشتن یک byte
     pub fn writeByte(self: *Self, byte: u8) !void {
-        try self.buffer.append(byte);
+        try self.buffer.append(self.allocator, byte);
     }
 
-    /// خواندن همه
+    /// خواندن همه (mutable)
     pub fn readAll(self: *Self) []u8 {
         return self.buffer.items;
     }
 
-    /// خواندن به slice
+    /// خواندن به slice (const)
     pub fn readBytes(self: Self) []const u8 {
         return self.buffer.items;
     }
 
-    /// پاک کردن
+    /// پاک کردن با حفظ capacity
     pub fn clear(self: *Self) void {
         self.buffer.clearRetainingCapacity();
     }
 
     /// تغییر اندازه
     pub fn resize(self: *Self, new_len: usize) !void {
-        try self.buffer.resize(new_len);
+        try self.buffer.resize(self.allocator, new_len);
     }
 
-    /// reserve کردن capacity
+    /// رزرو کردن capacity
     pub fn reserve(self: *Self, additional: usize) !void {
-        try self.buffer.ensureUnusedCapacity(additional);
+        try self.buffer.ensureUnusedCapacity(self.allocator, additional);
     }
 
     /// برش مستقیم (mutable)
@@ -99,8 +105,8 @@ pub const BytesMut = struct {
 
     /// تبدیل به Bytes (freeze)
     pub fn freeze(self: *Self) Bytes {
-        const data = self.buffer.toOwnedSlice() catch &[_]u8{};
-        const alloc = self.buffer.allocator;
+        const data = self.buffer.toOwnedSlice(self.allocator) catch &[_]u8{};
+        const alloc = self.allocator;
         return .{
             .data = data,
             .allocator = alloc,
@@ -109,7 +115,7 @@ pub const BytesMut = struct {
 
     /// کپی کردن به BytesMut جدید
     pub fn clone(self: Self) !Self {
-        return try Self.from(self.buffer.items, self.buffer.allocator);
+        return try Self.from(self.buffer.items, self.allocator);
     }
 };
 

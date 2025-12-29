@@ -48,22 +48,33 @@ inline fn isContinuation(byte: u8) bool {
     return (byte & 0xC0) == 0x80;
 }
 
-/// شمارش کاراکترها (نه bytes)
-pub fn charCount(data: []const u8) usize {
+/// دریافت تعداد طول بایت های یک رشته
+pub fn charCount(str: []const u8) usize {
+    if (str.len == 0) return 0;
+
     var count: usize = 0;
     var i: usize = 0;
+    const len = str.len;
 
-    while (i < data.len) {
-        const byte = data[i];
-        if (byte < 0x80) {
-            i += 1;
-        } else if (byte < 0xE0) {
-            i += 2;
-        } else if (byte < 0xF0) {
-            i += 3;
-        } else {
-            i += 4;
-        }
+    while (i < len) {
+        const byte = str[i];
+
+        // استفاده از بلوک شرطی بهینه (Branch Prediction-friendly)
+        const next_step: usize = blk: {
+            if (byte < 0x80) {
+                break :blk 1; // ASCII
+            } else if (byte < 0xC0) {
+                break :blk 1; // Continuation/Invalid (نامعتبر، اما 1 بایت رد می‌شویم)
+            } else if (byte < 0xE0) {
+                break :blk 2; // 2 bytes
+            } else if (byte < 0xF0) {
+                break :blk 3; // 3 bytes
+            } else {
+                break :blk 4; // 4 bytes
+            }
+        };
+
+        i += next_step;
         count += 1;
     }
 
@@ -86,5 +97,5 @@ test "utf8 validate" {
 
 test "utf8 char count" {
     try std.testing.expectEqual(@as(usize, 5), charCount("Hello"));
-    try std.testing.expectEqual(@as(usize, 5), charCount("سلام"));
+    try std.testing.expectEqual(@as(usize, 4), charCount("سلام"));
 }
