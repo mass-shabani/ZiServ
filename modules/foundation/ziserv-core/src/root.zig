@@ -167,7 +167,8 @@ pub fn isWindows() bool {
 pub fn createDefaultLogger(allocator: std.mem.Allocator) !Logger {
     var log = Logger.init(allocator, default_logger_config);
 
-    var console_sink = ConsoleSink.init(default_logger_config, std.io.getStdOut());
+    // اصلاح شده: استفاده از allocator و stdout جدید
+    var console_sink = ConsoleSink.init(allocator, default_logger_config, std.fs.File.stdout());
     try log.addSink(console_sink.sink());
 
     return log;
@@ -342,7 +343,8 @@ pub const testing = struct {
             .show_source = false,
         });
 
-        var console_sink = ConsoleSink.init(.{}, std.io.getStdOut());
+        // اصلاح شده: استفاده از allocator و stdout جدید
+        var console_sink = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
         try log.addSink(console_sink.sink());
 
         return log;
@@ -436,14 +438,17 @@ test "create default components" {
 }
 
 test "banner and system info" {
-    var buffer = std.ArrayList(u8).init(std.testing.allocator);
-    defer buffer.deinit();
+    // اصلاح شده: Unmanaged init
+    var buffer = std.ArrayList(u8){};
+    // اصلاح شده: deinit نیاز به allocator دارد
+    defer buffer.deinit(std.testing.allocator);
 
-    try printBanner(buffer.writer());
+    // اصلاح شده: writer نیاز به allocator دارد
+    try printBanner(buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 
     buffer.clearRetainingCapacity();
-    try printSystemInfo(buffer.writer());
+    try printSystemInfo(buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 }
 

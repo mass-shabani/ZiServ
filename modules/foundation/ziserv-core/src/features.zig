@@ -1,6 +1,7 @@
 // ============================================================
 // فایل: modules/foundation/ziserv-core/src/features.zig
 // Feature Flags System - Runtime + Compile-time
+// اصلاح شده: toOwnedSlice سازگار با Unmanaged ArrayList
 // ============================================================
 
 const std = @import("std");
@@ -203,8 +204,8 @@ pub const FeatureFlags = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
 
-        var buffer = std.ArrayList(u8).init(allocator);
-        const writer = buffer.writer();
+        var buffer = std.ArrayList(u8){};
+        const writer = buffer.writer(allocator);
 
         try writer.writeAll("{\n");
 
@@ -226,9 +227,8 @@ pub const FeatureFlags = struct {
         }
 
         try writer.writeAll("\n}\n");
-        return buffer.toOwnedSlice();
+        return buffer.toOwnedSlice(allocator);
     }
-
     /// بارگذاری از environment variables
     pub fn loadFromEnv(self: *FeatureFlags, prefix: []const u8) !void {
         self.mutex.lock();

@@ -1,6 +1,7 @@
 // ============================================================
 // فایل: modules/foundation/ziserv-core/src/platform.zig
 // تشخیص و مدیریت پلتفرم
+// اصلاح شده: استفاده از OS Calls برای صفحه حافظه به جای std.mem.page_size
 // ============================================================
 
 const std = @import("std");
@@ -161,7 +162,15 @@ pub const Platform = struct {
 
     /// اندازه صفحه حافظه
     pub fn pageSize() usize {
-        return std.mem.page_size;
+        if (builtin.os.tag == .windows) {
+            // ویندوز: استفاده از GetSystemInfo
+            var info: std.os.windows.SYSTEM_INFO = undefined;
+            std.os.windows.kernel32.GetSystemInfo(&info);
+            return info.dwPageSize;
+        } else {
+            // POSIX (Linux, macOS, BSD): استفاده از sysconf
+            return std.os.sysconf(@intFromEnum(std.os.sysconf.PAGESIZE));
+        }
     }
 };
 
@@ -177,4 +186,7 @@ test "platform utilities" {
 
     const nl = Platform.newline();
     try std.testing.expect(nl.len > 0);
+
+    const page_size = Platform.pageSize();
+    try std.testing.expect(page_size > 0); // معمولا 4096
 }

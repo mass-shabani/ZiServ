@@ -1,6 +1,7 @@
 // ============================================================
 // فایل: modules/foundation/ziserv-core/src/logger.zig
 // سیستم Logger حرفه‌ای با performance بالا
+// اصلاح شده نهایی: رفع بستن stdout در ConsoleSink
 // ============================================================
 
 const std = @import("std");
@@ -109,17 +110,21 @@ pub const Sink = struct {
     }
 };
 
-/// Console Sink (stdout/stderr)
+/// Console Sink (stdout/stderr) - اصلاح شده: نباید stdout را ببندیم
 pub const ConsoleSink = struct {
+    file: std.fs.File,
     config: LoggerConfig,
-    writer: std.fs.File.Writer,
     mutex: std.Thread.Mutex,
+    buffer: std.ArrayList(u8),
+    allocator: std.mem.Allocator,
 
-    pub fn init(config: LoggerConfig, file: std.fs.File) ConsoleSink {
+    pub fn init(allocator: std.mem.Allocator, config: LoggerConfig, file: std.fs.File) ConsoleSink {
         return .{
+            .file = file,
             .config = config,
-            .writer = file.writer(),
             .mutex = .{},
+            .buffer = std.ArrayList(u8){},
+            .allocator = allocator,
         };
     }
 
@@ -127,83 +132,96 @@ pub const ConsoleSink = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
 
+        self.buffer.clearRetainingCapacity();
+        const writer = self.buffer.writer(self.allocator);
+
         switch (self.config.format) {
-            .text => try self.writeText(entry),
-            .json => try self.writeJson(entry),
-            .colored => try self.writeColored(entry),
+            .text => try self.writeText(entry, writer),
+            .json => try self.writeJson(entry, writer),
+            .colored => try self.writeColored(entry, writer),
         }
+
+        try self.file.writeAll(self.buffer.items);
     }
 
-    fn writeText(self: *ConsoleSink, entry: LogEntry) !void {
-        const w = self.writer;
-
+    fn writeText(self: *ConsoleSink, entry: LogEntry, writer: anytype) !void {
         if (self.config.show_timestamp) {
             const ms = @divTrunc(entry.timestamp, 1_000_000);
-            try w.print("[{d}] ", .{ms});
+            try writer.print("[{d}] ", .{ms});
         }
 
-        try w.print("[{s}] ", .{entry.level.toString()});
+        try writer.print("[{s}] ", .{entry.level.toString()});
 
         if (self.config.show_source and entry.source != null) {
             const src = entry.source.?;
-            try w.print("{}:{}:{} ", .{ std.fs.path.basename(src.file), src.line, src.column });
+            try writer.print("{s}:{}:{} ", .{ std.fs.path.basename(src.file), src.line, src.column });
         }
 
         if (self.config.show_thread_id and entry.thread_id != null) {
-            try w.print("[T:{}] ", .{entry.thread_id.?});
+            try writer.print("[T:{}] ", .{entry.thread_id.?});
         }
 
-        try w.print("{s}\n", .{entry.message});
+        try writer.print("{s}\n", .{entry.message});
     }
 
-    fn writeJson(self: *ConsoleSink, entry: LogEntry) !void {
-        const w = self.writer;
+    fn writeJson(self: *ConsoleSink, entry: LogEntry, writer: anytype) !void {
+        try writer.writeAll("{");
 
-        try w.writeAll("{");
-        try w.print("\"timestamp\":{d},", .{entry.timestamp});
-        try w.print("\"level\":\"{s}\",", .{entry.level.toString()});
+        var needs_comma = false;
 
-        if (entry.source) |src| {
-            try w.print("\"file\":\"{s}\",", .{std.fs.path.basename(src.file)});
-            try w.print("\"line\":{d},", .{src.line});
+        if (self.config.show_timestamp) {
+            try writer.print("\"timestamp\":{d}", .{entry.timestamp});
+            needs_comma = true;
         }
 
-        if (entry.thread_id) |tid| {
-            try w.print("\"thread\":{d},", .{tid});
+        try writer.print("{s}\"level\":\"{s}\"", .{ if (needs_comma) "," else "", entry.level.toString() });
+        needs_comma = true;
+
+        if (self.config.show_source and entry.source != null) {
+            const src = entry.source.?;
+            try writer.print(",\"file\":\"{s}\"", .{std.fs.path.basename(src.file)});
+            try writer.print(",\"line\":{d}", .{src.line});
+            try writer.print(",\"column\":{d}", .{src.column});
         }
 
-        try w.print("\"message\":\"{s}\"", .{entry.message});
-        try w.writeAll("}\n");
+        if (self.config.show_thread_id and entry.thread_id != null) {
+            try writer.print(",\"thread\":{d}", .{entry.thread_id.?});
+        }
+
+        try writer.print(",\"message\":\"{s}\"", .{entry.message});
+        try writer.writeAll("}\n");
     }
 
-    fn writeColored(self: *ConsoleSink, entry: LogEntry) !void {
-        const w = self.writer;
+    fn writeColored(self: *ConsoleSink, entry: LogEntry, writer: anytype) !void {
         const color = entry.level.color();
         const reset = "\x1b[0m";
 
         if (self.config.show_timestamp) {
             const ms = @divTrunc(entry.timestamp, 1_000_000);
-            try w.print("\x1b[90m[{d}]\x1b[0m ", .{ms});
+            try writer.print("\x1b[90m[{d}]\x1b[0m ", .{ms});
         }
 
-        try w.print("{s}[{s}]{s} ", .{ color, entry.level.toString(), reset });
+        try writer.print("{s}[{s}]{s} ", .{ color, entry.level.toString(), reset });
 
         if (self.config.show_source and entry.source != null) {
             const src = entry.source.?;
-            try w.print("\x1b[90m{}:{}:{}\x1b[0m ", .{ std.fs.path.basename(src.file), src.line, src.column });
+            try writer.print("\x1b[90m{s}:{}:{}\x1b[0m ", .{ std.fs.path.basename(src.file), src.line, src.column });
         }
 
-        try w.print("{s}\n", .{entry.message});
+        try writer.print("{s}\n", .{entry.message});
     }
 
     pub fn flush(self: *ConsoleSink) !void {
         self.mutex.lock();
         defer self.mutex.unlock();
-        // stdout/stderr auto-flush in most cases
+        try self.file.sync();
     }
 
     pub fn deinit(self: *ConsoleSink) void {
-        _ = self;
+        // اصلاح شد: self.file.close() حذف شد.
+        // ما نباید stdout/stderr را ببندیم چون باعث خطا در ویندوز می‌شود
+        // و همچنین کتابخانه استاندارد ممکن است بعدا به آن‌ها نیاز داشته باشد.
+        self.buffer.deinit(self.allocator);
     }
 
     pub fn sink(self: *ConsoleSink) Sink {
@@ -233,12 +251,13 @@ pub const ConsoleSink = struct {
     }
 };
 
-/// File Sink (لاگ به فایل)
+/// File Sink (لاگ به فایل) - اصلاح شده برای یکسان‌سازی نام‌ها
 pub const FileSink = struct {
     file: std.fs.File,
     config: LoggerConfig,
     mutex: std.Thread.Mutex,
     buffer: std.ArrayList(u8),
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, path: []const u8, config: LoggerConfig) !FileSink {
         const file = try std.fs.cwd().createFile(path, .{ .truncate = false });
@@ -248,7 +267,8 @@ pub const FileSink = struct {
             .file = file,
             .config = config,
             .mutex = .{},
-            .buffer = std.ArrayList(u8).init(allocator),
+            .buffer = std.ArrayList(u8){},
+            .allocator = allocator,
         };
     }
 
@@ -257,16 +277,22 @@ pub const FileSink = struct {
         defer self.mutex.unlock();
 
         self.buffer.clearRetainingCapacity();
-        const w = self.buffer.writer();
+        const writer = self.buffer.writer(self.allocator);
 
-        const ms = @divTrunc(entry.timestamp, 1_000_000);
-        try w.print("[{d}] [{s}] ", .{ ms, entry.level.toString() });
-
-        if (entry.source) |src| {
-            try w.print("{}:{}:{} ", .{ std.fs.path.basename(src.file), src.line, src.column });
+        if (self.config.show_timestamp) {
+            const ms = @divTrunc(entry.timestamp, 1_000_000);
+            try writer.print("[{d}] [{s}] ", .{ ms, entry.level.toString() });
+        } else {
+            try writer.print("[{s}] ", .{entry.level.toString()});
         }
 
-        try w.print("{s}\n", .{entry.message});
+        if (self.config.show_source) {
+            if (entry.source) |s| {
+                try writer.print("{s}:{}:{} ", .{ std.fs.path.basename(s.file), s.line, s.column });
+            }
+        }
+
+        try writer.print("{s}\n", .{entry.message});
 
         _ = try self.file.write(self.buffer.items);
     }
@@ -279,7 +305,7 @@ pub const FileSink = struct {
 
     pub fn deinit(self: *FileSink) void {
         self.file.close();
-        self.buffer.deinit();
+        self.buffer.deinit(self.allocator);
     }
 
     pub fn sink(self: *FileSink) Sink {
@@ -320,9 +346,9 @@ pub const Logger = struct {
     pub fn init(allocator: std.mem.Allocator, config: LoggerConfig) Logger {
         return .{
             .config = config,
-            .sinks = std.ArrayList(Sink).init(allocator),
+            .sinks = std.ArrayList(Sink){},
             .allocator = allocator,
-            .buffer = std.ArrayList(u8).init(allocator),
+            .buffer = std.ArrayList(u8){},
             .mutex = .{},
         };
     }
@@ -331,12 +357,12 @@ pub const Logger = struct {
         for (self.sinks.items) |s| {
             s.deinit();
         }
-        self.sinks.deinit();
-        self.buffer.deinit();
+        self.sinks.deinit(self.allocator);
+        self.buffer.deinit(self.allocator);
     }
 
     pub fn addSink(self: *Logger, sink: Sink) !void {
-        try self.sinks.append(sink);
+        try self.sinks.append(self.allocator, sink);
     }
 
     pub fn log(
@@ -352,8 +378,8 @@ pub const Logger = struct {
         defer self.mutex.unlock();
 
         self.buffer.clearRetainingCapacity();
-        const w = self.buffer.writer();
-        std.fmt.format(w, fmt, args) catch return;
+        const writer = self.buffer.writer(self.allocator);
+        std.fmt.format(writer, fmt, args) catch return;
 
         const entry = LogEntry{
             .level = level,
@@ -436,6 +462,8 @@ pub fn fatal(comptime fmt: []const u8, args: anytype) void {
     if (global_logger) |logger| logger.fatal(fmt, args);
 }
 
+// --- Tests ---
+
 test "logger basic" {
     var logger = Logger.init(std.testing.allocator, .{
         .level = .debug,
@@ -443,7 +471,7 @@ test "logger basic" {
     });
     defer logger.deinit();
 
-    var console = ConsoleSink.init(.{}, std.io.getStdOut());
+    var console = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
     try logger.addSink(console.sink());
 
     logger.info("Test message: {s}", .{"Hello"});
@@ -456,7 +484,7 @@ test "logger levels" {
     });
     defer logger.deinit();
 
-    var console = ConsoleSink.init(.{}, std.io.getStdOut());
+    var console = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
     try logger.addSink(console.sink());
 
     logger.debug("This should not appear", .{});
