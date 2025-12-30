@@ -75,11 +75,11 @@ pub fn map(comptime T: type, value: T, in_min: T, in_max: T, out_min: T, out_max
 pub fn average(comptime T: type, values: []const T) T {
     if (values.len == 0) return 0;
 
-    var sum: T = 0;
+    var sum_avr: T = 0;
     for (values) |v| {
-        sum += v;
+        sum_avr += v;
     }
-    return @divTrunc(sum, @as(T, @intCast(values.len)));
+    return @divTrunc(sum_avr, @as(T, @intCast(values.len)));
 }
 
 /// Sum
@@ -178,8 +178,8 @@ pub fn isPrime(n: u64) bool {
 /// Random number generator utilities
 pub const Random = struct {
     /// Random integer in range [min, max]
-    pub fn intRange(rng: std.Random, comptime T: type, min: T, max: T) T {
-        return rng.intRangeAtMost(T, min, max);
+    pub fn intRange(rng: std.Random, comptime T: type, min_range: T, max_range: T) T {
+        return rng.intRangeAtMost(T, min_range, max_range);
     }
 
     /// Random float in range [0, 1)
@@ -223,11 +223,11 @@ pub const Stats = struct {
     pub fn mean(comptime T: type, values: []const T) f64 {
         if (values.len == 0) return 0;
 
-        var sum: f64 = 0;
+        var sum_avr: f64 = 0;
         for (values) |v| {
-            sum += @as(f64, @floatFromInt(v));
+            sum_avr += @as(f64, @floatFromInt(v));
         }
-        return sum / @as(f64, @floatFromInt(values.len));
+        return sum_avr / @as(f64, @floatFromInt(values.len));
     }
 
     /// Median
@@ -249,12 +249,12 @@ pub const Stats = struct {
         if (values.len == 0) return 0;
 
         const m = mean(T, values);
-        var sum: f64 = 0;
+        var sum_avr: f64 = 0;
         for (values) |v| {
             const diff = @as(f64, @floatFromInt(v)) - m;
-            sum += diff * diff;
+            sum_avr += diff * diff;
         }
-        return sum / @as(f64, @floatFromInt(values.len));
+        return sum_avr / @as(f64, @floatFromInt(values.len));
     }
 
     /// Standard deviation

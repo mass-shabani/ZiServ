@@ -89,9 +89,9 @@ pub fn ArrayList(comptime T: type) type {
             };
         }
 
-        pub fn initCapacity(allocator: std.mem.Allocator, capacity: usize) !Self {
+        pub fn initCapacity(allocator: std.mem.Allocator, capacity_size: usize) !Self {
             var lst = std.ArrayList(T){};
-            try lst.ensureTotalCapacity(allocator, capacity);
+            try lst.ensureTotalCapacity(allocator, capacity_size);
             return .{
                 .list = lst,
                 .allocator = allocator,
@@ -106,8 +106,8 @@ pub fn ArrayList(comptime T: type) type {
             try self.list.append(self.allocator, item);
         }
 
-        pub fn appendSlice(self: *Self, items: []const T) !void {
-            try self.list.appendSlice(self.allocator, items);
+        pub fn appendSlice(self: *Self, items_for_append: []const T) !void {
+            try self.list.appendSlice(self.allocator, items_for_append);
         }
 
         pub fn insert(self: *Self, index: usize, item: T) !void {
@@ -343,18 +343,18 @@ pub fn PriorityQueue(comptime T: type, comptime compareFn: fn (T, T) bool) type 
 
         fn siftDown(self: *Self, start_index: usize) void {
             var index = start_index;
-            const len = self.items.items.len;
+            const lenth = self.items.items.len;
 
             while (true) {
                 const left = 2 * index + 1;
                 const right = 2 * index + 2;
                 var smallest = index;
 
-                if (left < len and compareFn(self.items.items[left], self.items.items[smallest])) {
+                if (left < lenth and compareFn(self.items.items[left], self.items.items[smallest])) {
                     smallest = left;
                 }
 
-                if (right < len and compareFn(self.items.items[right], self.items.items[smallest])) {
+                if (right < lenth and compareFn(self.items.items[right], self.items.items[smallest])) {
                     smallest = right;
                 }
 

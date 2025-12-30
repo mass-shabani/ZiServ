@@ -5,10 +5,9 @@
 
 const std = @import("std");
 
-/// ===============================================
-/// زیرماژول‌های پایه (Foundation)
-/// ===============================================
-
+// ===============================================
+// زیرماژول‌های پایه (Foundation)
+// ===============================================
 /// Platform detection و utilities
 pub const platform = @import("platform.zig");
 
@@ -27,10 +26,9 @@ pub const memory = @import("memory.zig");
 /// Time utilities
 pub const time = @import("time.zig");
 
-/// ===============================================
-/// زیرماژول‌های جدید (New Features)
-/// ===============================================
-
+// ===============================================
+// زیرماژول‌های جدید (New Features)
+// ===============================================
 /// Logger system - سیستم لاگ حرفه‌ای
 pub const logger = @import("logger.zig");
 
@@ -43,9 +41,9 @@ pub const result = @import("result.zig");
 /// Feature flags system - مدیریت ویژگی‌ها
 pub const features = @import("features.zig");
 
-/// ===============================================
-/// Type Aliases (برای راحتی استفاده)
-/// ===============================================
+// ===============================================
+// Type Aliases (برای راحتی استفاده)
+// ===============================================
 
 // Platform
 pub const Os = platform.Os;
@@ -100,10 +98,9 @@ pub const Feature = features.Feature;
 pub const FeatureValue = features.FeatureValue;
 pub const FeatureType = features.FeatureType;
 
-/// ===============================================
-/// اطلاعات ماژول
-/// ===============================================
-
+// ===============================================
+// اطلاعات ماژول
+// ===============================================
 /// نسخه ماژول
 pub const version = "0.1.0";
 
@@ -119,10 +116,9 @@ pub const author = "ZiServ Team";
 /// لایسنس
 pub const license = "MIT";
 
-/// ===============================================
-/// تنظیمات پیش‌فرض
-/// ===============================================
-
+// ===============================================
+// تنظیمات پیش‌فرض
+// ===============================================
 /// پیکربندی پیش‌فرض
 pub const default_config = config.Config.default();
 
@@ -136,10 +132,9 @@ pub const default_logger_config = logger.LoggerConfig{
     .buffer_size = 4096,
 };
 
-/// ===============================================
-/// Helper Functions
-/// ===============================================
-
+// ===============================================
+// Helper Functions
+// ===============================================
 /// دریافت اطلاعات پلتفرم فعلی
 pub fn getPlatformInfo() PlatformInfo {
     return PlatformInfo.current();
@@ -165,17 +160,16 @@ pub fn isWindows() bool {
     return Os.isWindows();
 }
 
-/// ===============================================
-/// Initialization Helpers
-/// ===============================================
-
+// ===============================================
+// Initialization Helpers
+// ===============================================
 /// ساخت یک Logger ساده با تنظیمات پیش‌فرض
 pub fn createDefaultLogger(allocator: std.mem.Allocator) !Logger {
     var log = Logger.init(allocator, default_logger_config);
-    
+
     var console_sink = ConsoleSink.init(default_logger_config, std.io.getStdOut());
     try log.addSink(console_sink.sink());
-    
+
     return log;
 }
 
@@ -189,10 +183,9 @@ pub fn createDefaultFeatures(allocator: std.mem.Allocator) FeatureFlags {
     return FeatureFlags.init(allocator);
 }
 
-/// ===============================================
-/// Global State Management
-/// ===============================================
-
+// ===============================================
+// Global State Management
+// ===============================================
 /// ساختار Global Context برای ZiServ
 pub const GlobalContext = struct {
     logger: ?*Logger,
@@ -249,10 +242,9 @@ pub fn getGlobalContext() ?*GlobalContext {
     return global_context;
 }
 
-/// ===============================================
-/// Utility Macros (compile-time helpers)
-/// ===============================================
-
+// ===============================================
+// Utility Macros (compile-time helpers)
+// ===============================================
 /// بررسی اینکه آیا در حالت debug هستیم
 pub inline fn isDebugMode() bool {
     return @import("builtin").mode == .Debug;
@@ -275,10 +267,9 @@ pub fn getPageSize() usize {
     return Platform.pageSize();
 }
 
-/// ===============================================
-/// Version Information
-/// ===============================================
-
+// ===============================================
+// Version Information
+// ===============================================
 /// نسخه به صورت struct
 pub const Version = struct {
     major: u32 = 0,
@@ -305,10 +296,9 @@ pub const Version = struct {
 /// نسخه فعلی
 pub const version_info = Version.current();
 
-/// ===============================================
-/// Banner و Information
-/// ===============================================
-
+// ===============================================
+// Banner و Information
+// ===============================================
 /// نمایش banner ZiServ Core
 pub fn printBanner(writer: anytype) !void {
     try writer.writeAll("\n");
@@ -329,7 +319,7 @@ pub fn printSystemInfo(writer: anytype) !void {
     const page_size = getPageSize();
 
     try writer.writeAll("System Information:\n");
-    try writer.writeAll("─".** 50 ++ "\n");
+    try writer.writeAll("───────────────────────────────────\n");
     try writer.print("  CPU Cores:      {d}\n", .{cpu_count});
     try writer.print("  Page Size:      {d} bytes\n", .{page_size});
     try writer.print("  OS:             {s}\n", .{getOsName()});
@@ -338,10 +328,9 @@ pub fn printSystemInfo(writer: anytype) !void {
     try writer.writeAll("\n");
 }
 
-/// ===============================================
-/// Testing Support
-/// ===============================================
-
+// ===============================================
+// Testing Support
+// ===============================================
 /// Helper برای تست‌ها
 pub const testing = struct {
     /// ساخت logger برای تست
@@ -370,9 +359,9 @@ pub const testing = struct {
     }
 };
 
-/// ===============================================
-/// Module Tests
-/// ===============================================
+// ===============================================
+// Module Tests
+// ===============================================
 
 test "import all submodules" {
     std.testing.refAllDecls(@This());
@@ -457,7 +446,6 @@ test "banner and system info" {
     try printSystemInfo(buffer.writer());
     try std.testing.expect(buffer.items.len > 0);
 }
-
 
 // تست‌ها
 test {

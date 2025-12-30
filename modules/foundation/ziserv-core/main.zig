@@ -9,16 +9,16 @@ pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
     std.debug.print("\n", .{});
-    std.debug.print("=".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
     std.debug.print("  ZiServ Core - Complete Feature Demo\n", .{});
-    std.debug.print("=".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
     std.debug.print("\n", .{});
 
     // ========================================
     // 1. Logger System
     // ========================================
     std.debug.print("1. Logger System Demo\n", .{});
-    std.debug.print("-".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
 
     var logger = core.Logger.init(allocator, .{
         .level = .debug,
@@ -52,7 +52,7 @@ pub fn main() !void {
     // 2. Metrics System
     // ========================================
     std.debug.print("2. Metrics System Demo\n", .{});
-    std.debug.print("-".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
 
     var registry = core.MetricsRegistry.init(allocator);
     defer registry.deinit();
@@ -129,7 +129,7 @@ pub fn main() !void {
     // 3. Result Type
     // ========================================
     std.debug.print("3. Result Type Demo\n", .{});
-    std.debug.print("-".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
 
     // Basic Result
     const R = core.Result(i32, error{Failed});
@@ -173,7 +173,7 @@ pub fn main() !void {
     // 4. Feature Flags
     // ========================================
     std.debug.print("4. Feature Flags Demo\n", .{});
-    std.debug.print("-".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
 
     var flags = core.FeatureFlags.init(allocator);
     defer flags.deinit();
@@ -223,7 +223,7 @@ pub fn main() !void {
     // 5. Integration Example
     // ========================================
     std.debug.print("5. Integration Example\n", .{});
-    std.debug.print("-".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
 
     // Simulate handling a request
     const request_result = handleRequest(&logger, &registry, &flags);
@@ -235,9 +235,9 @@ pub fn main() !void {
     }
 
     std.debug.print("\n", .{});
-    std.debug.print("=".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
     std.debug.print("  Demo Completed Successfully!\n", .{});
-    std.debug.print("=".** 70 ++ "\n", .{});
+    std.debug.print("────────────────────────────────────────\n", .{});
     std.debug.print("\n", .{});
 }
 

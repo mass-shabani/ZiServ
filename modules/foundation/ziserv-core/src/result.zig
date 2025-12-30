@@ -1,6 +1,6 @@
 // ============================================================
 // فایل: modules/foundation/ziserv-core/src/result.zig
-// Result Type - بهبود یافته برای error handling
+// Result & Option Type - نسخه اصلاح شده (رفع تداخل نام‌ها)
 // ============================================================
 
 const std = @import("std");
@@ -14,13 +14,13 @@ pub fn Result(comptime T: type, comptime E: type) type {
 
         const Self = @This();
 
-        /// ساخت Result موفق
-        pub inline fn ok(value: T) Self {
+        /// ساخت Result موفق (success به جای ok برای جلوگیری از تداخل با فیلد ok)
+        pub inline fn success(value: T) Self {
             return .{ .ok = value };
         }
 
-        /// ساخت Result خطا
-        pub inline fn err(value: E) Self {
+        /// ساخت Result خطا (failure به جای err برای جلوگیری از تداخل با فیلد err)
+        pub inline fn failure(value: E) Self {
             return .{ .err = value };
         }
 
@@ -66,27 +66,55 @@ pub fn Result(comptime T: type, comptime E: type) type {
             };
         }
 
+        // --- Diagnostics (دیباگینگ) ---
+
+        /// اجرای تابع f روی مقدار در صورت موفقیت (برای لاگ یا بررسی)
+        pub fn inspect(self: Self, f: fn (T) void) Self {
+            if (self == .ok) f(self.ok);
+            return self;
+        }
+
+        /// اجرای تابع f روی خطا در صورت وجود (برای لاگ خطا)
+        pub fn inspectErr(self: Self, f: fn (E) void) Self {
+            if (self == .err) f(self.err);
+            return self;
+        }
+
+        // --- Transformers (تبدیل‌گرها) ---
+
         /// تبدیل Result<T,E> به Result<U,E>
-        pub fn map(self: Self, comptime f: fn (T) anytype) Result(@TypeOf(f(@as(T, undefined))), E) {
+        /// نوع جدید U باید اول مشخص شود، سپس تابع تبدیل
+        pub fn map(self: Self, comptime U: type, f: fn (T) U) Result(U, E) {
             return switch (self) {
                 .ok => |val| .{ .ok = f(val) },
                 .err => |e| .{ .err = e },
             };
         }
 
-        /// تبدیل خطا
-        pub fn mapErr(self: Self, comptime f: fn (E) anytype) Result(T, @TypeOf(f(@as(E, undefined)))) {
+        /// تبدیل خطا از نوع E به نوع F
+        /// نوع جدید F باید اول مشخص شود
+        pub fn mapErr(self: Self, comptime F: type, f: fn (E) F) Result(T, F) {
             return switch (self) {
                 .ok => |val| .{ .ok = val },
                 .err => |e| .{ .err = f(e) },
             };
         }
 
-        /// Chain operations
-        pub fn andThen(self: Self, comptime f: fn (T) anytype) @TypeOf(f(@as(T, undefined))) {
+        /// Chain operations (Flattening)
+        /// تابع f خروجی نهایی را برمی‌گرداند
+        pub fn andThen(self: Self, comptime U: type, f: fn (T) Result(U, E)) Result(U, E) {
             return switch (self) {
                 .ok => |val| f(val),
                 .err => |e| .{ .err = e },
+            };
+        }
+
+        /// مدیریت خطا و تلاش برای رفع آن (Chain روی خطا)
+        /// اگر خطا باشد، تابع f اجرا می‌شود
+        pub fn orElse(self: Self, comptime U: type, f: fn (E) Result(U, E)) Result(U, E) {
+            return switch (self) {
+                .ok => |val| Result(U, E).success(val),
+                .err => |e| f(e),
             };
         }
 
@@ -117,11 +145,13 @@ pub fn Option(comptime T: type) type {
 
         const Self = @This();
 
-        pub inline fn some(value: T) Self {
+        /// ساخت Option با مقدار (init به جای some برای جلوگیری از تداخل با فیلد some)
+        pub inline fn init(value: T) Self {
             return .{ .some = value };
         }
 
-        pub inline fn none() Self {
+        /// ساخت Option خالی (empty به جای none برای جلوگیری از تداخل با فیلد none)
+        pub inline fn empty() Self {
             return .none;
         }
 
@@ -154,17 +184,40 @@ pub fn Option(comptime T: type) type {
             };
         }
 
-        pub fn map(self: Self, comptime f: fn (T) anytype) Option(@TypeOf(f(@as(T, undefined)))) {
+        // --- Diagnostics (دیباگینگ) ---
+
+        /// اجرای تابع f روی مقدار در صورت وجود (برای لاگ)
+        pub fn inspect(self: Self, f: fn (T) void) Self {
+            if (self == .some) f(self.some);
+            return self;
+        }
+
+        // --- Transformers (تبدیل‌گرها) ---
+
+        /// تبدیل Option<T> به Option<U>
+        /// نوع جدید U باید اول مشخص شود (سازگار با Result)
+        pub fn map(self: Self, comptime U: type, f: fn (T) U) Option(U) {
             return switch (self) {
                 .some => |val| .{ .some = f(val) },
                 .none => .none,
             };
         }
 
-        pub fn andThen(self: Self, comptime f: fn (T) anytype) @TypeOf(f(@as(T, undefined))) {
+        /// Chain operations (Flattening)
+        /// تابع f خروجی نهایی را برمی‌گرداند
+        pub fn andThen(self: Self, comptime U: type, f: fn (T) Option(U)) Option(U) {
             return switch (self) {
                 .some => |val| f(val),
                 .none => .none,
+            };
+        }
+
+        /// مدیریت وضعیت None (Chain روی None)
+        /// اگر مقدار None باشد، تابع f اجرا می‌شود
+        pub fn orElse(self: Self, comptime U: type, f: fn () Option(U)) Option(U) {
+            return switch (self) {
+                .some => |val| Option(U).init(val),
+                .none => f(),
             };
         }
 
@@ -190,21 +243,21 @@ pub fn ResultWithContext(comptime T: type, comptime E: type) type {
 
         const Self = @This();
 
-        pub fn ok(value: T) Self {
+        pub fn success(value: T) Self { // تغییر نام از ok به success
             return .{
                 .result = .{ .ok = value },
                 .context = null,
             };
         }
 
-        pub fn err(value: E, ctx: error_types.ErrorContext) Self {
+        pub fn failure(value: E, ctx: error_types.ErrorContext) Self { // تغییر نام از err به failure
             return .{
                 .result = .{ .err = value },
                 .context = ctx,
             };
         }
 
-        pub fn errSimple(value: E) Self {
+        pub fn failureSimple(value: E) Self {
             return .{
                 .result = .{ .err = value },
                 .context = null,
@@ -248,22 +301,24 @@ pub fn chain(comptime results: anytype) !void {
     }
 }
 
+// --- Tests (Updated) ---
+
 test "result basic" {
     const R = Result(i32, error{Failed});
 
-    const success = R.ok(42);
+    const success = R.success(42); // تغییر ok به success
     try std.testing.expect(success.isOk());
     try std.testing.expectEqual(@as(i32, 42), success.unwrap());
 
-    const failure = R.err(error.Failed);
+    const failure = R.failure(error.Failed); // تغییر err به failure
     try std.testing.expect(failure.isErr());
 }
 
 test "result map" {
     const R = Result(i32, error{Failed});
 
-    const success = R.ok(10);
-    const mapped = success.map(struct {
+    const success = R.success(10); // تغییر ok به success
+    const mapped = success.map(i32, struct {
         fn double(x: i32) i32 {
             return x * 2;
         }
@@ -275,11 +330,11 @@ test "result map" {
 test "option basic" {
     const O = Option(i32);
 
-    const some = O.some(42);
+    const some = O.init(42); // تغییر some به init
     try std.testing.expect(some.isSome());
     try std.testing.expectEqual(@as(i32, 42), some.unwrap());
 
-    const none = O.none();
+    const none = O.empty(); // تغییر none به empty
     try std.testing.expect(none.isNone());
     try std.testing.expectEqual(@as(i32, 0), none.unwrapOr(0));
 }
@@ -287,8 +342,8 @@ test "option basic" {
 test "option map" {
     const O = Option(i32);
 
-    const some = O.some(5);
-    const mapped = some.map(struct {
+    const some = O.init(5); // تغییر some به init
+    const mapped = some.map(i32, struct {
         fn square(x: i32) i32 {
             return x * x;
         }
@@ -301,7 +356,7 @@ test "result with context" {
     const R = ResultWithContext(i32, error{Failed});
 
     const ctx = error_types.ErrorContext.init("Test error", @src());
-    const failure = R.err(error.Failed, ctx);
+    const failure = R.failure(error.Failed, ctx); // تغییر err به failure
 
     try std.testing.expect(failure.isErr());
     try std.testing.expect(failure.getContext() != null);

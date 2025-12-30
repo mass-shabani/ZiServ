@@ -18,9 +18,9 @@ pub const StringBuilder = struct {
         };
     }
 
-    pub fn initCapacity(allocator: std.mem.Allocator, capacity: usize) !StringBuilder {
+    pub fn initCapacity(allocator: std.mem.Allocator, capacity_size: usize) !StringBuilder {
         var buf = std.ArrayList(u8){};
-        try buf.ensureTotalCapacity(allocator, capacity);
+        try buf.ensureTotalCapacity(allocator, capacity_size);
         return .{
             .buffer = buf,
             .allocator = allocator,
@@ -163,16 +163,16 @@ pub fn replace(allocator: std.mem.Allocator, str: []const u8, old: []const u8, n
 pub fn replaceAll(allocator: std.mem.Allocator, str: []const u8, old: []const u8, new: []const u8) ![]u8 {
     if (old.len == 0) return allocator.dupe(u8, str);
 
-    var count: usize = 0;
+    var count_str: usize = 0;
     var pos: usize = 0;
     while (std.mem.indexOfPos(u8, str, pos, old)) |found| {
-        count += 1;
+        count_str += 1;
         pos = found + old.len;
     }
 
-    if (count == 0) return allocator.dupe(u8, str);
+    if (count_str == 0) return allocator.dupe(u8, str);
 
-    const new_len = str.len + count * (new.len - old.len);
+    const new_len = str.len + count_str * (new.len - old.len);
     var result = try allocator.alloc(u8, new_len);
 
     var src_pos: usize = 0;
@@ -194,20 +194,20 @@ pub fn replaceAll(allocator: std.mem.Allocator, str: []const u8, old: []const u8
 
 /// To uppercase
 pub fn toUpper(allocator: std.mem.Allocator, str: []const u8) ![]u8 {
-    var result = try allocator.dupe(u8, str);
-    for (result) |*c| {
+    const result_str = try allocator.dupe(u8, str);
+    for (result_str) |*c| {
         c.* = std.ascii.toUpper(c.*);
     }
-    return result;
+    return result_str;
 }
 
 /// To lowercase
 pub fn toLower(allocator: std.mem.Allocator, str: []const u8) ![]u8 {
-    var result = try allocator.dupe(u8, str);
-    for (result) |*c| {
+    const result_str = try allocator.dupe(u8, str);
+    for (result_str) |*c| {
         c.* = std.ascii.toLower(c.*);
     }
-    return result;
+    return result_str;
 }
 
 /// Reverse string
@@ -221,12 +221,12 @@ pub fn reverse(allocator: std.mem.Allocator, str: []const u8) ![]u8 {
 }
 
 /// Repeat string
-pub fn repeat(allocator: std.mem.Allocator, str: []const u8, count: usize) ![]u8 {
-    if (count == 0) return try allocator.alloc(u8, 0);
+pub fn repeat(allocator: std.mem.Allocator, str: []const u8, count_str: usize) ![]u8 {
+    if (count_str == 0) return try allocator.alloc(u8, 0);
 
-    var result = try allocator.alloc(u8, str.len * count);
+    var result = try allocator.alloc(u8, str.len * count_str);
     var i: usize = 0;
-    while (i < count) : (i += 1) {
+    while (i < count_str) : (i += 1) {
         @memcpy(result[i * str.len .. (i + 1) * str.len], str);
     }
     return result;
