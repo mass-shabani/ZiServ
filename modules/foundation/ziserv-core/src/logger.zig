@@ -1,7 +1,7 @@
 // ============================================================
 // فایل: modules/foundation/ziserv-core/src/logger.zig
 // سیستم Logger حرفه‌ای با performance بالا
-// اصلاح شده نهایی: رفع بستن stdout در ConsoleSink
+// اصلاح نهایی: جلوگیری از بستن stdout/stderr در ConsoleSink
 // ============================================================
 
 const std = @import("std");
@@ -90,11 +90,13 @@ pub const LogEntry = struct {
 pub const Sink = struct {
     ptr: *anyopaque,
     vtable: *const VTable,
+    allocator: std.mem.Allocator,
 
     pub const VTable = struct {
         write: *const fn (*anyopaque, LogEntry) anyerror!void,
         flush: *const fn (*anyopaque) anyerror!void,
         deinit: *const fn (*anyopaque) void,
+        destroy: *const fn (*anyopaque, std.mem.Allocator) void, // برای مدیریت صحیح Heap
     };
 
     pub fn write(self: Sink, entry: LogEntry) !void {
@@ -106,11 +108,15 @@ pub const Sink = struct {
     }
 
     pub fn deinit(self: Sink) void {
-        self.vtable.deinit(self.ptr);
+        return self.vtable.deinit(self.ptr);
+    }
+
+    pub fn destroy(self: Sink, allocator: std.mem.Allocator) void {
+        self.vtable.destroy(self.ptr, allocator);
     }
 };
 
-/// Console Sink (stdout/stderr) - اصلاح شده: نباید stdout را ببندیم
+/// Console Sink (stdout/stderr) - اصلاح نهایی: نباید stdout را ببندیم
 pub const ConsoleSink = struct {
     file: std.fs.File,
     config: LoggerConfig,
@@ -218,9 +224,11 @@ pub const ConsoleSink = struct {
     }
 
     pub fn deinit(self: *ConsoleSink) void {
-        // اصلاح شد: self.file.close() حذف شد.
-        // ما نباید stdout/stderr را ببندیم چون باعث خطا در ویندوز می‌شود
-        // و همچنین کتابخانه استاندارد ممکن است بعدا به آن‌ها نیاز داشته باشد.
+        // اصلاح نهایی و حیاتی: stdout/stderr را نبست نمی‌کنیم
+        // بستن stdout باعث می‌شود در تست‌های متعدد یا پس از این کلاس، خروجی از دسترس خارج شود
+        // و اگر دوباره سعی شود بسته شود، باعث خطای CloseHandle در ویندوز می‌شود.
+        // self.file.close(); // <--- حذف شد
+
         self.buffer.deinit(self.allocator);
     }
 
@@ -246,7 +254,15 @@ pub const ConsoleSink = struct {
                         s.deinit();
                     }
                 }.deinit,
+                .destroy = struct {
+                    fn destroy(ptr: *anyopaque, allocator: std.mem.Allocator) void {
+                        const s: *ConsoleSink = @ptrCast(@alignCast(ptr));
+                        s.deinit();
+                        allocator.destroy(s);
+                    }
+                }.destroy,
             },
+            .allocator = self.allocator,
         };
     }
 };
@@ -267,7 +283,7 @@ pub const FileSink = struct {
             .file = file,
             .config = config,
             .mutex = .{},
-            .buffer = std.ArrayList(u8){},
+            .buffer = std.ArrayList(u8){}, // Unmanaged init
             .allocator = allocator,
         };
     }
@@ -304,6 +320,7 @@ pub const FileSink = struct {
     }
 
     pub fn deinit(self: *FileSink) void {
+        // در FileSink ما فایل را خودمان باز کردیم، پس حتماً باید آن را ببندیم
         self.file.close();
         self.buffer.deinit(self.allocator);
     }
@@ -330,7 +347,15 @@ pub const FileSink = struct {
                         s.deinit();
                     }
                 }.deinit,
+                .destroy = struct {
+                    fn destroy(ptr: *anyopaque, allocator: std.mem.Allocator) void {
+                        const s: *FileSink = @ptrCast(@alignCast(ptr));
+                        s.deinit();
+                        allocator.destroy(s);
+                    }
+                }.destroy,
             },
+            .allocator = self.allocator,
         };
     }
 };
@@ -355,7 +380,7 @@ pub const Logger = struct {
 
     pub fn deinit(self: *Logger) void {
         for (self.sinks.items) |s| {
-            s.deinit();
+            s.destroy(self.allocator);
         }
         self.sinks.deinit(self.allocator);
         self.buffer.deinit(self.allocator);
@@ -471,8 +496,13 @@ test "logger basic" {
     });
     defer logger.deinit();
 
-    var console = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
+    // اصلاح شد: استفاده از Heap allocation برای سازگاری با destroy
+    const console = try std.testing.allocator.create(ConsoleSink);
+    console.* = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
     try logger.addSink(console.sink());
+
+    // چون Logger صاحب Sinks است (destroy را صدا می‌زند)، نیازی به دستی destroy در اینجا نیست.
+    // Logger.deinit() حافظه را آزاد می‌کند.
 
     logger.info("Test message: {s}", .{"Hello"});
     logger.warn("Warning: {d}", .{42});
@@ -484,7 +514,9 @@ test "logger levels" {
     });
     defer logger.deinit();
 
-    var console = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
+    // اصلاح شد: استفاده از Heap allocation
+    const console = try std.testing.allocator.create(ConsoleSink);
+    console.* = ConsoleSink.init(std.testing.allocator, .{}, std.fs.File.stdout());
     try logger.addSink(console.sink());
 
     logger.debug("This should not appear", .{});
