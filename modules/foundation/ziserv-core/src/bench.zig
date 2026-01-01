@@ -89,7 +89,7 @@ fn benchLogger(iterations: usize, allocator: std.mem.Allocator) !void {
 
         if (ms > 0) {
             const bytes: u64 = @intCast(iterations * (msg.len + 10));
-            const mbps = @as(f64, @intFromFloat(bytes * 8)) / (1024 * 1024) / (@as(f64, ms) / 1000);
+            const mbps = @as(f64, @floatFromInt(@as(u64, bytes))) * 8.0 / (1024.0 * 1024.0) / (@as(f64, @floatFromInt(@as(u64, @intCast(ms)))) / 1000.0);
             std.debug.print("  [{s}]: Speed: {d:.2} MB/s", .{ l.name, mbps });
         } else {
             std.debug.print("  [{s}]: Too fast to measure", .{l.name});
@@ -194,7 +194,7 @@ fn benchMetrics(iterations: usize, allocator: std.mem.Allocator) !void {
     defer registry.deinit();
 
     const counter = try registry.registerCounter("test_counter", "Test counter", .count);
-    const gauge = try registry.registerGauge("test_gauge", "Test gauge", .gauge);
+    const gauge = try registry.registerGauge("test_gauge", "Test gauge", .none);
 
     {
         var i: usize = 0;
@@ -255,7 +255,9 @@ pub fn main() !void {
     const iterations = 100_000;
 
     // اصلاح شد: حذف آرگومان دوم .{} در نسخه 0.15.2
-    var gpa = std.heap.GeneralPurposeAllocator(std.heap.page_allocator);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){
+        .backing_allocator = std.heap.page_allocator,
+    };
 
     try benchPlatform(iterations * 10);
     try benchBaseline();
@@ -263,7 +265,7 @@ pub fn main() !void {
     try benchResult(iterations);
     try benchFeatures(iterations, gpa.allocator());
     try benchMetrics(iterations, gpa.allocator());
-    try benchLogger(iterations / 10, gpa.allocator());
+    try benchLogger(iterations / 1000, gpa.allocator());
 
     std.debug.print("\n====================================================================\n", .{});
     std.debug.print("  Benchmarks Completed!\n", .{});
