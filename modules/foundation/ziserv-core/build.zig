@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
 
     // ساخت ماژول core
     _ = b.addModule("ziserv-core", .{
-        .root_source_file = b.path("src/root.zig"),
+        .root_source_file = b.path("src/bench.zig"),
         .target = target,
         .optimize = optimize,
     });
