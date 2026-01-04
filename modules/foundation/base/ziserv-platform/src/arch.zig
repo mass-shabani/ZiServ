@@ -115,7 +115,7 @@ pub const Arch = enum {
 // تست‌ها
 test "Arch: current" {
     const arch = Arch.current();
-    try std.testing.expect(arch != .unknown or !builtin.cpu.arch.isKnown());
+    try std.testing.expect(arch != .unknown);
 }
 
 test "Arch: bits" {

@@ -155,7 +155,7 @@ test "Os: extensions" {
 }
 
 test "Os: all enum values" {
-    inline for (@typeInfo(Os).Enum.fields) |field| {
+    inline for (std.meta.fields(Os)) |field| {
         const os: Os = @enumFromInt(field.value);
         _ = os.name();
         _ = os.isSupported();
