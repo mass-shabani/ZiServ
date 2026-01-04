@@ -11,4 +11,5 @@
         "src",
         "README.md",
     },
+    .fingerprint = 0x8f46408e4da3a844,
 }

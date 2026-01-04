@@ -100,8 +100,8 @@ pub fn main() !void {
     std.debug.print("  Platform Information\n", .{});
     std.debug.print("====================================================================\n", .{});
 
-    try platform.Platform.printInfo(std.io.getStdOut().writer());
-    try platform.features.CpuFeatures.printFeatures(std.io.getStdOut().writer());
+    try platform.Platform.printInfo(std.fs.File.stdout().deprecatedWriter());
+    try platform.features.CpuFeatures.printFeatures(std.fs.File.stdout().deprecatedWriter());
 
     std.debug.print("====================================================================\n", .{});
     std.debug.print("  Benchmarks Completed!\n", .{});
