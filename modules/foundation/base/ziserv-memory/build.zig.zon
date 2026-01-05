@@ -1,0 +1,15 @@
+.{
+    .name = .ziserv_memory,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.15.2",
+
+    .dependencies = .{},
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "README.md",
+    },
+    .fingerprint = 0x50728ef3a5e9d263,
+}
