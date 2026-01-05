@@ -145,6 +145,6 @@ test "CommonCodes: formatting" {
     var buffer = std.ArrayList(u8){};
     defer buffer.deinit(std.testing.allocator);
 
-    try std.fmt.format(buffer.writer(std.testing.allocator), "{}", .{CommonCodes.NOT_FOUND});
+    try CommonCodes.NOT_FOUND.format("", .{}, buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 }

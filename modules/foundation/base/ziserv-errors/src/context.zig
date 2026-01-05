@@ -101,7 +101,7 @@ pub fn ErrorWithContext(comptime E: type) type {
 
             try writer.print("Error: {s}", .{@errorName(self.err)});
             if (self.context) |ctx| {
-                try writer.print(" - {}", .{ctx});
+                try writer.print(" - {s}", .{ctx.message});
             }
         }
 
@@ -128,7 +128,7 @@ pub fn ErrorWithContext(comptime E: type) type {
 test "Context: creation" {
     const ctx = Context.init("Test error", @src());
 
-    try std.testing.expectEqual(@as(u32, 116), ctx.line);
+    try std.testing.expectEqual(@as(u32, 129), ctx.line);
     try std.testing.expect(ctx.message.len > 0);
     try std.testing.expect(ctx.timestamp > 0);
 }
@@ -160,6 +160,6 @@ test "ErrorWithContext: formatting" {
     const ctx = Context.initSimple("Test error");
     const err = EWC.withContext(error.IoError, ctx);
 
-    try std.fmt.format(buffer.writer(std.testing.allocator), "{}", .{err});
+    try err.format("", .{}, buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 }

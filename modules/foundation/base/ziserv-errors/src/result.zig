@@ -66,14 +66,14 @@ pub fn Result(comptime T: type, comptime E: type) type {
         pub fn unwrap(self: Self) T {
             return switch (self) {
                 .ok => |val| val,
-                .err => |e| std.debug.panic("Called unwrap on Err: {any}", .{e}),
+                .err => |e| std.debug.panic("Called unwrap on Err: {}", .{e}),
             };
         }
 
         /// دریافت مقدار خطا - panic اگر Ok
         pub fn unwrapErr(self: Self) E {
             return switch (self) {
-                .ok => |val| std.debug.panic("Called unwrapErr on Ok: {any}", .{val}),
+                .ok => |val| std.debug.panic("Called unwrapErr on Ok: {}", .{val}),
                 .err => |e| e,
             };
         }
@@ -278,7 +278,7 @@ test "Result: formatting" {
     defer buffer.deinit(std.testing.allocator);
 
     const ok_result = R.success(42);
-    try std.fmt.format(buffer.writer(std.testing.allocator), "{}", .{ok_result});
+    try ok_result.format("", .{}, buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 }
 

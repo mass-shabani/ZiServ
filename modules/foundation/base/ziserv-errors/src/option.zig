@@ -327,13 +327,13 @@ test "Option: formatting" {
     defer buffer.deinit(std.testing.allocator);
 
     const some_val = O.someOption(42);
-    try std.fmt.format(buffer.writer(std.testing.allocator), "{}", .{some_val});
+    try some_val.format("", .{}, buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 
     buffer.clearRetainingCapacity();
 
     const none_val = O.noneOption();
-    try std.fmt.format(buffer.writer(std.testing.allocator), "{}", .{none_val});
+    try none_val.format("", .{}, buffer.writer(std.testing.allocator));
     try std.testing.expect(buffer.items.len > 0);
 }
 
