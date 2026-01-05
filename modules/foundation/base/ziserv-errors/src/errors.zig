@@ -195,7 +195,6 @@ pub fn getCategory(err: Error) ErrorCategory {
         error.NetworkError,
         error.ConnectionFailed,
         error.ConnectionRefused,
-        error.ConnectionTimeout,
         error.AddressNotAvailable,
         error.AddressInUse,
         => .network,
