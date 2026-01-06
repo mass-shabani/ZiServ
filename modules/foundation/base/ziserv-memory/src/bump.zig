@@ -193,8 +193,8 @@ pub const GrowingBumpAllocator = struct {
     pub fn init(backing: std.mem.Allocator, initial_size: usize) !Self {
         const initial_buffer = try backing.alloc(u8, initial_size);
 
-        var buffers = std.ArrayList([]u8).init(backing);
-        try buffers.append(initial_buffer);
+        var buffers: std.ArrayList([]u8) = .{};
+        try buffers.append(backing, initial_buffer);
 
         return Self{
             .current = BumpAllocator.init(initial_buffer),
@@ -208,7 +208,7 @@ pub const GrowingBumpAllocator = struct {
         for (self.buffers.items) |buffer| {
             self.backing.free(buffer);
         }
-        self.buffers.deinit();
+        self.buffers.deinit(self.backing);
     }
 
     pub fn allocator_interface(self: *Self) std.mem.Allocator {
@@ -240,7 +240,7 @@ pub const GrowingBumpAllocator = struct {
         const new_size = @max(self.buffer_size, len * 2);
         const new_buffer = self.backing.alloc(u8, new_size) catch return null;
 
-        self.buffers.append(new_buffer) catch {
+        self.buffers.append(self.backing, new_buffer) catch {
             self.backing.free(new_buffer);
             return null;
         };

@@ -27,9 +27,14 @@ const output = struct {
         self.threaded.deinit();
     }
 
-    pub fn print(self: *@This(), comptime str: []const u8, args: anytype) !void {
+    pub fn print(self: *const @This(), comptime str: []const u8, args: anytype) !void {
         _ = self;
         std.debug.print(str, args);
+    }
+
+    pub fn writeAll(self: *const @This(), str: []const u8) !void {
+        _ = self;
+        std.debug.print("{s}", .{str});
     }
 
     fn write(self: *output, str: []const u8) !void {
@@ -234,7 +239,10 @@ fn exampleBoundedArena() !void {
     try stdout.write("╚════════════════════════════════════════════════════════════╝\n");
     try stdout.write("\n");
 
-    var arena = memory.BoundedArena.init(std.testing.allocator, 2048);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+
+    var arena = memory.BoundedArena.init(gpa.allocator(), 2048);
     defer arena.deinit();
 
     const allocator = arena.allocator();
@@ -272,7 +280,10 @@ fn exampleGrowingBump() !void {
     try stdout.write("╚════════════════════════════════════════════════════════════╝\n");
     try stdout.write("\n");
 
-    var bump = try memory.GrowingBumpAllocator.init(std.testing.allocator, 1024);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+
+    var bump = try memory.GrowingBumpAllocator.init(gpa.allocator(), 1024);
     defer bump.deinit();
 
     const allocator = bump.allocator_interface();

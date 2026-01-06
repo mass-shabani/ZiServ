@@ -102,6 +102,7 @@ pub const BoundedArena = struct {
                 .alloc = alloc,
                 .resize = resize,
                 .free = free,
+                .remap = remap,
             },
         };
     }
@@ -109,7 +110,7 @@ pub const BoundedArena = struct {
     fn alloc(
         ctx: *anyopaque,
         len: usize,
-        ptr_align: u8,
+        ptr_align: std.mem.Alignment,
         ret_addr: usize,
     ) ?[*]u8 {
         const self: *Self = @ptrCast(@alignCast(ctx));
@@ -128,7 +129,7 @@ pub const BoundedArena = struct {
     fn resize(
         ctx: *anyopaque,
         buf: []u8,
-        buf_align: u8,
+        buf_align: std.mem.Alignment,
         new_len: usize,
         ret_addr: usize,
     ) bool {
@@ -155,7 +156,7 @@ pub const BoundedArena = struct {
     fn free(
         ctx: *anyopaque,
         buf: []u8,
-        buf_align: u8,
+        buf_align: std.mem.Alignment,
         ret_addr: usize,
     ) void {
         const self: *Self = @ptrCast(@alignCast(ctx));
@@ -165,6 +166,10 @@ pub const BoundedArena = struct {
         } else {
             self.current_size = 0;
         }
+    }
+
+    fn remap(_: *anyopaque, _: []u8, _: std.mem.Alignment, _: usize, _: usize) ?[*]u8 {
+        return null;
     }
 
     pub fn reset(self: *Self) void {

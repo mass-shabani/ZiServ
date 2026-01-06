@@ -47,14 +47,12 @@ pub fn Pool(comptime T: type) type {
 
         /// دریافت یک object از pool
         pub fn acquire(self: *Self) !*T {
-            if (self.available.items.len > 0) {
-                const item = self.available.pop();
+            const item = self.available.pop() orelse {
+                // اگر pool خالی است، object جدید بسازیم
+                const new_item = try self.allocator.create(T);
                 self.acquired_count += 1;
-                return item;
-            }
-
-            // اگر pool خالی است، object جدید بسازیم
-            const item = try self.allocator.create(T);
+                return new_item;
+            };
             self.acquired_count += 1;
             return item;
         }

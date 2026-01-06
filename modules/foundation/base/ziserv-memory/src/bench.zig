@@ -6,6 +6,42 @@
 const std = @import("std");
 const memory = @import("ziserv-memory");
 
+const output = struct {
+    debug_allocator: std.heap.DebugAllocator(.{}),
+    threaded: std.Io.Threaded,
+
+    pub fn init() output {
+        var self: output = undefined;
+        self.debug_allocator = .init;
+        const gpa = self.debug_allocator.allocator();
+        self.threaded = .init(gpa, .{});
+        return self;
+    }
+
+    fn this(self: @This()) *output {
+        return &self;
+    }
+
+    pub fn deInit(self: *@This()) !void {
+        _ = self.debug_allocator.deinit();
+        self.threaded.deinit();
+    }
+
+    pub fn print(self: *const @This(), comptime str: []const u8, args: anytype) !void {
+        _ = self;
+        std.debug.print(str, args);
+    }
+
+    pub fn writeAll(self: *const @This(), str: []const u8) !void {
+        write(self, str);
+    }
+
+    fn write(self: *output, str: []const u8) !void {
+        const io = self.threaded.io();
+        try std.Io.File.stdout().writeStreamingAll(io, str);
+    }
+};
+
 fn benchStdAllocator(iterations: usize) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -55,8 +91,10 @@ fn benchArenaAllocator(iterations: usize) !void {
 }
 
 fn benchBumpAllocator(iterations: usize) !void {
-    const buffer = try std.testing.allocator.alloc(u8, 10 * 1024 * 1024);
-    defer std.testing.allocator.free(buffer);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const buffer = try gpa.allocator().alloc(u8, 10 * 1024 * 1024);
+    defer gpa.allocator().free(buffer);
 
     var timer = try std.time.Timer.start();
 
@@ -86,7 +124,10 @@ fn benchPoolAllocator(iterations: usize) !void {
         data: [1024]u8,
     };
 
-    var pool = try memory.Pool(TestStruct).init(std.testing.allocator, 100);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+
+    var pool = try memory.Pool(TestStruct).init(gpa.allocator(), 100);
     defer pool.deinit();
 
     var timer = try std.time.Timer.start();
@@ -167,7 +208,9 @@ fn benchMixedWorkload(iterations: usize) !void {
 }
 
 fn benchGrowingBump(iterations: usize) !void {
-    var bump = try memory.GrowingBumpAllocator.init(std.testing.allocator, 4096);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    var bump = try memory.GrowingBumpAllocator.init(gpa.allocator(), 4096);
     defer bump.deinit();
 
     const allocator = bump.allocator_interface();
@@ -194,37 +237,38 @@ fn benchGrowingBump(iterations: usize) !void {
 }
 
 pub fn main() !void {
-    const stdout = std.Io.Writer;
+    var stdout: output = output.init();
+    defer stdout.deInit() catch {};
 
-    try stdout.writeAll("\n");
-    try stdout.writeAll("╔════════════════════════════════════════════════════════════╗\n");
-    try stdout.writeAll("║       ziserv-memory - Performance Benchmarks               ║\n");
-    try stdout.writeAll("╚════════════════════════════════════════════════════════════╝\n");
-    try stdout.writeAll("\n");
+    try stdout.write("\n");
+    try stdout.write("╔════════════════════════════════════════════════════════════╗\n");
+    try stdout.write("║       ziserv-memory - Performance Benchmarks               ║\n");
+    try stdout.write("╚════════════════════════════════════════════════════════════╝\n");
+    try stdout.write("\n");
 
     const iterations: usize = 100_000;
 
-    try stdout.writeAll("Running benchmarks...\n\n");
+    try stdout.write("Running benchmarks...\n\n");
 
-    try stdout.writeAll("─────────────────────────────────────\n");
-    try stdout.writeAll("Allocator Comparison (1KB allocations)\n");
-    try stdout.writeAll("─────────────────────────────────────\n");
+    try stdout.write("─────────────────────────────────────\n");
+    try stdout.write("Allocator Comparison (1KB allocations)\n");
+    try stdout.write("─────────────────────────────────────\n");
     try benchStdAllocator(iterations);
     try benchArenaAllocator(iterations);
     try benchBumpAllocator(iterations);
     try benchPoolAllocator(iterations);
     try benchTracker(iterations);
-    try stdout.writeAll("\n");
+    try stdout.write("\n");
 
-    try stdout.writeAll("─────────────────────────────────────\n");
-    try stdout.writeAll("Advanced Benchmarks\n");
-    try stdout.writeAll("─────────────────────────────────────\n");
+    try stdout.write("─────────────────────────────────────\n");
+    try stdout.write("Advanced Benchmarks\n");
+    try stdout.write("─────────────────────────────────────\n");
     try benchMixedWorkload(iterations);
     try benchGrowingBump(iterations);
-    try stdout.writeAll("\n");
+    try stdout.write("\n");
 
-    try stdout.writeAll("╔════════════════════════════════════════════════════════════╗\n");
-    try stdout.writeAll("║         Benchmarks Completed Successfully!                 ║\n");
-    try stdout.writeAll("╚════════════════════════════════════════════════════════════╝\n");
-    try stdout.writeAll("\n");
+    try stdout.write("╔════════════════════════════════════════════════════════════╗\n");
+    try stdout.write("║         Benchmarks Completed Successfully!                 ║\n");
+    try stdout.write("╚════════════════════════════════════════════════════════════╝\n");
+    try stdout.write("\n");
 }

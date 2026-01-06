@@ -18,8 +18,10 @@ pub const Allocator = allocator.Allocator;
 pub const Arena = arena.Arena;
 pub const Pool = pool.Pool;
 pub const BumpAllocator = bump.BumpAllocator;
+pub const GrowingBumpAllocator = bump.GrowingBumpAllocator;
 pub const Tracker = tracking.Tracker;
 pub const Stats = stats.Stats;
+pub const BoundedArena = arena.BoundedArena;
 
 // Version info
 pub const version = .{
